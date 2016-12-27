@@ -31,7 +31,7 @@ library
     alex,
     happy
   build-depends:
-    base >= 4.7 && < 5,
+    base >= 4.8 && < 5,
     bytestring,
     text,
     array,
@@ -49,7 +49,7 @@ executable wsc
   hs-source-dirs:      cli
   default-language:    Haskell2010
   ghc-options:         -Wall -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-incomplete-uni-patterns
-  build-depends:       base >= 4.7 && < 5, Bang
+  build-depends:       base >= 4.8 && < 5, Bang
   if flag(debug)
     ghc-options:       -Werror
 
@@ -58,7 +58,7 @@ executable wsi
   hs-source-dirs:      repl
   default-language:    Haskell2010
   ghc-options:         -Wall -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-incomplete-uni-patterns
-  build-depends:       base >= 4.7 && < 5, Bang
+  build-depends:       base >= 4.8 && < 5, Bang
   if flag(debug)
     ghc-options:       -Werror
 
@@ -68,7 +68,7 @@ test-suite test-compiler
   hs-source-dirs:      tests
   default-language:    Haskell2010
   ghc-options:         -Wall -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-incomplete-uni-patterns
-  build-depends:       base >= 4.7 && < 5, Bang
+  build-depends:       base >= 4.8 && < 5, Bang
   if flag(debug)
     ghc-options:       -Werror
 
