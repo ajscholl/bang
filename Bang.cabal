@@ -1,0 +1,78 @@
+name:                Bang
+version:             0.1.0.0
+synopsis:            A programming language aimed to be compiled to javascript.
+description:         Bang is a general purpose programming language aimed
+                     to be compiled to javascript in the browser, but it can
+                     also be used for other purposes.
+license:             BSD3
+license-file:        LICENSE
+author:              Anselm Jonas Scholl
+maintainer:          anselm.scholl@tu-harburg.de
+copyright:           (c) 2016 Anselm Jonas Scholl
+category:            Language
+build-type:          Simple
+extra-source-files:  ChangeLog.md
+cabal-version:       >=1.10
+
+flag debug
+  Description: Enables -Werror
+  Default:     False
+  Manual:      True
+
+library
+  exposed-modules:
+    Language.Bang.Compiler
+  other-modules:
+    Language.Bang.Lexer
+    Language.Bang.Parser
+    Language.Bang.Types.Error
+    Language.Bang.Types.SrcPos
+  build-tools:
+    alex,
+    happy
+  build-depends:
+    base >=4.9 && < 5,
+    bytestring,
+    text,
+    array,
+    pretty,
+    mtl,
+    semigroups
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+  ghc-options:         -Wall -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-incomplete-uni-patterns
+  if flag(debug)
+    ghc-options:       -Werror
+
+executable wsc
+  main-is:             Main.hs
+  hs-source-dirs:      cli
+  default-language:    Haskell2010
+  ghc-options:         -Wall -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-incomplete-uni-patterns
+  build-depends:       base >= 4.9 && < 5, Bang
+  if flag(debug)
+    ghc-options:       -Werror
+
+executable wsi
+  main-is:             Main.hs
+  hs-source-dirs:      repl
+  default-language:    Haskell2010
+  ghc-options:         -Wall -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-incomplete-uni-patterns
+  build-depends:       base >= 4.9 && < 5, Bang
+  if flag(debug)
+    ghc-options:       -Werror
+
+test-suite test-compiler
+  type:                exitcode-stdio-1.0
+  main-is:             Main.hs
+  hs-source-dirs:      tests
+  default-language:    Haskell2010
+  ghc-options:         -Wall -fwarn-tabs -fwarn-incomplete-record-updates -fwarn-incomplete-uni-patterns
+  build-depends:       base >= 4.9 && < 5, Bang
+  if flag(debug)
+    ghc-options:       -Werror
+
+
+source-repository head
+  type:     git
+  location: git://github.com/ajscholl/bang.git
