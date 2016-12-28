@@ -1,3 +1,5 @@
+language: haskell
+
 env:
  - CABALVER=1.22 GHCVER=7.10.1
  - CABALVER=1.22 GHCVER=7.10.2
@@ -19,10 +21,9 @@ install:
  - cabal --version
  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
  - travis_retry cabal update
- - cabal install alex happy --constraint="alex >= 3.2.1" --constraint="happy >= 1.19.5"
+ - cabal install alex happy --constraint="alex >= 3.2.1" --constraint="happy >= 1.19.5" -v
  - echo $PATH
- - echo $HOME
- - export $PATH=/$HOME/.cabal/bin:$PATH
+ - export PATH=/home/travis/.cabal/bin:$PATH
  - echo $PATH
  - alex --version
  - happy --version
