@@ -1,4 +1,5 @@
 {
+{-# LANGUAGE OverloadedStrings #-}
 module Language.Bang.Parser where
 
 import Control.Monad.Except
@@ -16,6 +17,8 @@ import Text.PrettyPrint.HughesPJClass
 import Language.Bang.Lexer
 import Language.Bang.Types.Error
 import Language.Bang.Types.SrcPos
+
+import Debug.Trace
 
 }
 
@@ -49,6 +52,7 @@ import Language.Bang.Types.SrcPos
     '='         { TEqual $$ }
     '|'         { TPipe $$ }
     '_'         { TWild $$ }
+    '-'         { TVarSym ("-", $$) }
     module      { TModule $$ }
     forall      { TForall $$ }
     function    { TFunction $$ }
@@ -104,14 +108,17 @@ Arg :: { LPArg }
     | varName                           { L (snd $1) $ PArg (fst $1) Nothing }
 
 Type :: { LPType }
-     : conName                          { L (snd $1) $ PTyCon (fst $1) }
-     | Type '->' Type                   { mkSpanLoc [locatedAt $1, $2, locatedAt $3] $ PTyApp (mkSpanLoc [locatedAt $1, $2] $ PTyApp (L $2 PTyArr) $1) $3 }
-     | '(' Type ')'                     { mkSpanLoc [$1, locatedAt $2, $3] $ PTyParen $2 }
+     : Type '->' Type1                  { mkSpanLoc [locatedAt $1, $2, locatedAt $3] $ PTyApp (mkSpanLoc [locatedAt $1, $2] $ PTyApp (L $2 PTyArr) $1) $3 }
      | forall TyVarList '.' Type        { mkSpanLocs [[$1], map locatedAt $2, [$3], [locatedAt $4]] $ PTyForall $2 $4 }
-     | TyVar                            { L (locatedAt $1) $ PTyTyVar $1 }
-     | Type Type                        { mkSpanLoc [locatedAt $1, locatedAt $2] $ PTyApp $1 $2 }
-     | '[' Type ']'                     { mkSpanLoc [$1, locatedAt $2, $3] $ PTyApp (mkSpanLoc [$1, $3] PTyList) $2 }
-     | '[' ']'                          { mkSpanLoc [$1, $2] PTyList }
+     | Type1                            { $1 }
+
+Type1 :: { LPType }
+      : conName                          { L (snd $1) $ PTyCon (fst $1) }
+      | '(' Type ')'                     { mkSpanLoc [$1, locatedAt $2, $3] $ PTyParen $2 }
+      | TyVar                            { L (locatedAt $1) $ PTyTyVar $1 }
+      | Type1 Type1                      { mkSpanLoc [locatedAt $1, locatedAt $2] $ PTyApp $1 $2 }
+      | '[' Type ']'                     { mkSpanLoc [$1, locatedAt $2, $3] $ PTyApp (mkSpanLoc [$1, $3] PTyList) $2 }
+      | '[' ']'                          { mkSpanLoc [$1, $2] PTyList }
 
 TyVar :: { LPTyVar }
       : varName                         { L (snd $1) $ PTyVar (fst $1) }
@@ -134,15 +141,43 @@ Expr :: { LPExpr }
      : do '{' Stmts '}'                 { mkSpanLocs [[$1], [$2], map locatedAt $3, [$4]] $ EBlock $3 }
      | if Expr then Stmt                { mkSpanLoc [$1, locatedAt $2, $3, locatedAt $4] $ EIf $2 $4 $ L noSrcSpan $ SExpr $ L noSrcSpan $ EBlock [] }
      | if Expr then Stmt else Stmt      { mkSpanLoc [$1, locatedAt $2, $3, locatedAt $4, $5, locatedAt $6] $ EIf $2 $4 $6 }
-     | Expr Operator Expr               { mkSpanLoc [locatedAt $1, locatedAt $2, locatedAt $3] $ EBinOp $1 $2 $3 }
-     | '(' Expr ')'                     { mkSpanLoc [$1, locatedAt $2, $3] $ EParen $2 }
-     | Operator Expr                    { mkSpanLoc [locatedAt $1, locatedAt $2] $ EUnOp $1 $2 }
-     | Expr Expr                        { mkSpanLoc [locatedAt $1, locatedAt $2] $ EApp $1 $2 }
-     | Lit                              { L (locatedAt $1) $ ELit $1 }
-     | varName                          { L (snd $1) $ EVar $ L (snd $1) $ PVarName $ fst $1 }
-     | conName                          { L (snd $1) $ ECon $ L (snd $1) $ PConName $ fst $1 }
-     | '(' varSym ')'                   { mkSpanLoc [$1, snd $2, $3] $ EVar $ L (snd $2) $ PVarSym $ fst $2 }
-     | '(' conSym ')'                   { mkSpanLoc [$1, snd $2, $3] $ ECon $ L (snd $2) $ PConSym $ fst $2 }
+     | Expr1 Operator Expr1             { mkSpanLoc [locatedAt $1, locatedAt $2, locatedAt $3] $ EBinOp $1 $2 $3 }
+     | case Expr of AltList             { mkSpanLoc [$1, locatedAt $2, $3, locatedAt $4] $ ECase $2 (locatedWhat $4) }
+     | Expr1                            { $1 }
+
+Expr1 :: { LPExpr }
+      : Expr2 Operator Expr1            { mkSpanLoc [locatedAt $1, locatedAt $2, locatedAt $3] $ EBinOp $1 $2 $3 }
+      | Expr2                           { $1 }
+
+Expr2 :: { LPExpr }
+      : '-' Expr3                       { mkSpanLoc [$1, locatedAt $2] $ ENeg $2 }
+      | Expr3                           { $1 }
+
+Expr3 :: { LPExpr }
+      : Lit                             { L (locatedAt $1) $ ELit $1 }
+      | varName                         { L (snd $1) $ EVar $ L (snd $1) $ PVarName $ fst $1 }
+      | conName                         { L (snd $1) $ ECon $ L (snd $1) $ PConName $ fst $1 }
+      | '(' varSym ')'                  { mkSpanLoc [$1, snd $2, $3] $ EVar $ L (snd $2) $ PVarSym $ fst $2 }
+      | '(' conSym ')'                  { mkSpanLoc [$1, snd $2, $3] $ ECon $ L (snd $2) $ PConSym $ fst $2 }
+      | '(' Expr ')'                    { mkSpanLoc [$1, locatedAt $2, $3] $ EParen $2 }
+      | Expr3 Expr3                     { mkSpanLoc [locatedAt $1, locatedAt $2] $ EApp $1 $2 }
+
+AltList :: { Located [LPAlt] }
+        : Alt                           { L (locatedAt $1) [$1] }
+        | '{' ListSepBy(Alt, ';') '}'   { mkSpanLocs [[$1], map locatedAt $2, [$3]] $2}
+
+Alt :: { LPAlt }
+    : Pat '->' Stmt                     { mkSpanLoc [locatedAt $1, $2, locatedAt $3] $ PAlt $1 $3 }
+
+Pat :: { LPPat }
+    : Pat1 conSym Pat1                  { mkSpanLoc [locatedAt $1, snd $2, locatedAt $3] $ PBinOpPat $1 (fst $2) $3 }
+    | Pat1                              { $1 }
+
+Pat1 :: { LPPat }
+    : varName                           { L (snd $1) $ PVarPat (fst $1) }
+    | conName List(Pat1)                { mkSpanLocs [[snd $1], map locatedAt $2] $ PConPat (fst $1) $2 }
+    | '_'                               { L $1 PWildPat }
+    | '(' Pat ')'                       { mkSpanLoc [$1, locatedAt $2, $3] $ PParenPat $2 }
 
 Lit :: { LPLit }
     : decimal                           { L (snd $1) $ PDecimalLit (fst $1) }
@@ -155,9 +190,15 @@ Operator :: { LPExpr }
          | varSym                       { L (snd $1) $ EVar $ L (snd $1) $ PVarSym $ fst $1 }
          | conSym                       { L (snd $1) $ ECon $ L (snd $1) $ PConSym $ fst $1 }
 
-List(p) : ListSepBy(p,Empty)                    { $1 }
+List(p) : RevList(p)                            { reverse $1 }
 
-List1(p) : RevList1SepBy(p,Empty)               { reverse $1 }
+RevList(p) : RevList(p) p                       { $2 : $1 }
+           | Empty                              { [] }
+
+List1(p) : RevList1(p)                          { reverse $1 }
+
+RevList1(p) : RevList1(p) p                     { $2 : $1 }
+            | p                                 { [$1] }
 
 List1SepBy(p,s) : RevList1SepBy(p,s)            { reverse $1 }
 
@@ -260,16 +301,29 @@ newtype PTyVar = PTyVar Text deriving Show
 type LPExpr = Located PExpr
 
 data PExpr = EBinOp !LPExpr !LPExpr !LPExpr -- a op b
-           | EUnOp !LPExpr !LPExpr -- op a
+           | ENeg !LPExpr
            | EParen !LPExpr
            | EBlock ![LPStmt]
            | EIf !LPExpr !LPStmt !LPStmt
-           -- | ECase !LPExpr []
+           | ECase !LPExpr ![LPAlt]
            | ELit !LPLit
            | EVar !LPVar
            | ECon !LPCon
            | EApp !LPExpr !LPExpr
            deriving Show
+
+type LPAlt = Located PAlt
+
+data PAlt = PAlt !LPPat !LPStmt deriving Show
+
+type LPPat = Located PPat
+
+data PPat = PVarPat !Text
+          | PConPat !Text ![LPPat]
+          | PBinOpPat !LPPat !Text !LPPat
+          | PWildPat
+          | PParenPat !LPPat
+          deriving Show
 
 type LPVar = Located PVar
 
@@ -296,7 +350,7 @@ data PLit = PDecimalLit !Integer
 
 -- | Parse a source file into a list of modules
 parseModules :: Text -> Either ParseError [LPModule]
-parseModules t = lexer t >>= parseModulesP
+parseModules t = lexer t >>= parseModulesP . traceShowId
 
 -- | Parse a line (or multiple lines) into a single statement to execute
 parseStmt :: Text -> Either ParseError LPStmt

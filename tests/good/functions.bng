@@ -32,15 +32,15 @@ function withStrings(a, b) = do
 
 type List a = Cons { head : a, tail : List a } | Nil
 
---function length(xs: List a): Int = do
---    return case xs of
---        Nil       -> 0
---        Cons _ xs -> 1 + length xs
---
---function length2(xs: List a): Int = do
---    case xs of
---        Nil       -> return 0
---        Cons _ xs -> return 1 + length2 xs
+function length(xs: List a): Int = do
+    return case xs of
+        Nil       -> 0
+        Cons _ xs -> 1 + length xs
+
+function length2(xs: List a): Int = do
+    case xs of
+        Nil       -> return 0
+        Cons _ xs -> return 1 + length2 xs
 
 --primitive function runST(st: forall s . ST s a): a
 
@@ -49,12 +49,12 @@ type Tuple a b = Tuple { fst: a, snd: b }
 function curry(f: Tuple a b -> c, a: a, b: b): c = do
     return f (Tuple a b)
 
---function unrurry(f: a -> b -> c, ab: Tuple a b): c = do
---    return case ab of
---        Tuple a b -> f a b
+function unrurry(f: a -> b -> c, ab: Tuple a b): c = do
+    return case ab of
+        Tuple a b -> f a b
 
 function long(): Int = do
-    let x = 1 + 1 + 1 + 1 +
+    let x = 1 + 1 + 1 + 1 + 1 + 1 +
         1 + 1 + 1
         + 1 + 1 + 1
     let y = x +
