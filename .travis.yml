@@ -21,7 +21,7 @@ install:
  - cabal --version
  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
  - travis_retry cabal update
- - cabal install alex happy --constraint="alex >= 3.2.1" --constraint="happy >= 1.19.5" -v
+ - cabal install alex happy --constraint="alex >= 3.2.1" --constraint="happy >= 1.19.5"
  - alex --version
  - happy --version
  - cabal install --only-dependencies --enable-tests
@@ -40,3 +40,10 @@ script:
       echo "expected '$SRC_TGZ' not found";
       exit 1;
    fi
+
+notifications:
+  email:
+    recipients:
+      - jonas.scholl@gmx.de
+    on_success: change
+    on_failure: always
